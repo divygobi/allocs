@@ -39,3 +39,7 @@
 
 # debug information files
 *.dwo
+
+#Misc
+CLAUDE.md
+.DS_Store
