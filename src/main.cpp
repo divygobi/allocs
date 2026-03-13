@@ -38,6 +38,7 @@ class dynAlloc{
         MemNode* m_startAddr;
 
     public:
+        static constexpr std::size_t memNodeSize = sizeof(MemNode);
 
         dynAlloc(int m_capacity = 1024) : m_capacity(m_capacity){
             
@@ -57,45 +58,49 @@ class dynAlloc{
 
         }
 
-        //size is the size of the memory the pointer is pointing to
         void* alloc(size_t size){
             void* chunk = nullptr;
-            MemNode* memNode = m_availHead;
-            while(memNode->m_next){
-                MemNode* currNode = memNode->m_next;
-                if(currNode->m_size >= size){
-                    chunk = currNode->m_start;
-                    MemNode* nodeNext = currNode->m_next;
 
-                    if(currNode->m_size - size == 0){
-                        //delete Node
-                        memNode->m_next = nodeNext;
-                        if(nodeNext){
-                            nodeNext->m_prev = memNode;
-                        }
-                        
-                        //might not need this lol
-                        currNode->m_next = nullptr;
-                        currNode->m_prev = nullptr;
-                        
-                    }
-                    else{ // Resize chunk 
-                        currNode->m_size -= size;
-                        
-                        char* newAddr = (char*)(currNode->m_start) + size;
+            //Start at the beginning of the mmap
+            MemNode* memNode = m_startAddr;
+            //TODO Linear search including checks of the taken chunks is not the best, fix this l8r
+            while(memNode != nullptr){
+                // We can fit the requested size in this chunk yey 
+                size_t availBytes = memNode->m_size;
+                if(availBytes >= size + memNodeSize){
 
-                        currNode->m_start = (void*)newAddr;
+                    MemNode newChunkMeta = {(uint16_t)size, false};
 
-                    }
-                    return chunk;
+                    *memNode = newChunkMeta;
+                    
+                    //TODO deal with little annoying fragmented spots that are smaller than sizeof(MemNode)
+
+                    //Create a new free chunk at the end of memNode + (size + memNodeSize)
+                    //
+                    
+                    MemNode* nextChunkMeta = getNextNode(memNode);
+
+
+                    *nextChunkMeta = MemNode(availBytes - size - memNodeSize, true);
+
+                    return memNode + 1;
                 }
                 else{
-                    memNode = currNode;
+                    memNode = getNextNode(memNode);
                 }
-
             }
 
             throw std::runtime_error("No memory found :\(");
+
+        }
+
+
+        //Just returns the addy right after [MemNode metadata][data(size in bytes)]
+        MemNode* getNextNode(MemNode* node){
+
+            char* convertedMetaPtr = (char*)node;
+            convertedMetaPtr += node->m_size + memNodeSize;
+            return (MemNode*)convertedMetaPtr;
 
         }
 
