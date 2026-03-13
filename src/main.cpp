@@ -15,44 +15,41 @@ int main(){
     return 0;
 }
 
-//A pointer representing the start of a chunk of memory 
+//A header representing the start of a chunk of memory 
+//We return a pointer to this chunk of memory by doing memNode + 1, this gives us a pointer right outside the struct 
 struct MemNode{
-    //A pointer to the start of the mem, 
-    void* m_start;
+    //TODO might not even need this 
 
     //The size of the memory chunk
-    int m_size;
+    std::uint16_t m_size;
 
-    //A link to the next available chunk
-    MemNode* m_next;
-    MemNode* m_prev;
+    //TODO could bit pack this maybe?
+    bool free;
 
-    MemNode(void* start = nullptr, int size = 0 , MemNode* next = nullptr, MemNode* prev = nullptr) : m_start(start), m_size(size), m_next(next), m_prev(prev){}
+
+    MemNode(int m_size = 0, bool free = true){}
+
+
 };
 
 class dynAlloc{
     private:
         int m_capacity;
-        void* m_startAddr;
-        
-        //The heam_size > std::si to the available chunk
-        MemNode* m_availHead;  
-        MemNode* m_takenHead;
+        MemNode* m_startAddr;
 
     public:
 
-        dynAlloc(int m_capacity = 1025) : m_capacity(m_capacity){
-            m_startAddr = mmap(NULL, m_capacity, PROT_READ | PROT_WRITE, MAP_ANON, -1,  0);
-
-            MemNode avail;
-            MemNode taken;
-            m_availHead = &avail;
-            m_takenHead = &taken;
-
-            MemNode initialChunk(m_startAddr, m_capacity, nullptr, m_availHead);
+        dynAlloc(int m_capacity = 1024) : m_capacity(m_capacity){
             
-            //We have m_capacity bytes available now
-            m_availHead->m_next = &initialChunk;
+            void* startAddr = mmap(NULL, 2*m_capacity, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1,  0);
+
+            MemNode initialChunk(m_capacity, true);
+
+            
+            m_startAddr = (MemNode*)(startAddr);
+
+            // We have structure like [header] | [data]
+            *m_startAddr = initialChunk; 
 
         }
 
@@ -98,16 +95,11 @@ class dynAlloc{
 
             }
 
-            if(chunk){
-                return chunk;
-            }
-            else{ 
-                throw std::runtime_error("No memory found :\(");
-            }
+            throw std::runtime_error("No memory found :\(");
 
         }
 
-        //TODO Just loop through until you get to 
+        //TODO Just loop through until you get to the next node, then i guess sharedptr new node and link it?
         void free(void* addr){
 
         }
