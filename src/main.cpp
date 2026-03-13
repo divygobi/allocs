@@ -18,18 +18,13 @@ int main(){
 //A header representing the start of a chunk of memory 
 //We return a pointer to this chunk of memory by doing memNode + 1, this gives us a pointer right outside the struct 
 struct MemNode{
-    //TODO might not even need this 
-
     //The size of the memory chunk
     std::uint16_t m_size;
 
     //TODO could bit pack this maybe?
     bool free;
 
-
     MemNode(int m_size = 0, bool free = true){}
-
-
 };
 
 class dynAlloc{
@@ -41,7 +36,8 @@ class dynAlloc{
         static constexpr std::size_t memNodeSize = sizeof(MemNode);
 
         dynAlloc(int m_capacity = 1024) : m_capacity(m_capacity){
-            
+
+            //TODO We use 
             void* startAddr = mmap(NULL, 2*m_capacity, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1,  0);
 
             MemNode initialChunk(m_capacity, true);
@@ -54,6 +50,7 @@ class dynAlloc{
 
         }
 
+        //TODO call unmap on the 
         ~dynAlloc(){
 
         }
@@ -70,18 +67,21 @@ class dynAlloc{
                 if(availBytes >= size + memNodeSize){
 
                     MemNode newChunkMeta = {(uint16_t)size, false};
-
                     *memNode = newChunkMeta;
                     
-                    //TODO deal with little annoying fragmented spots that are smaller than sizeof(MemNode)
+                    //If the available amount of bytes is less than or equal to a header, just give it all to the current fframe
+                    //TODO WASTED SPACE, more data allocated than given
+                    size_t leftOverBytes = availBytes - size - memNodeSize;
 
-                    //Create a new free chunk at the end of memNode + (size + memNodeSize)
-                    //
-                    
-                    MemNode* nextChunkMeta = getNextNode(memNode);
+                    if(leftOverBytes > memNodeSize){
+                        MemNode* nextChunkMeta = getNextNode(memNode);
 
+                        *nextChunkMeta = MemNode(- size - memNodeSize, true);
+                    }
+                    else {
+                        newChunkMeta.m_size = availBytes;
+                    }
 
-                    *nextChunkMeta = MemNode(availBytes - size - memNodeSize, true);
 
                     return memNode + 1;
                 }
