@@ -104,9 +104,20 @@ class dynAlloc{
 
         }
 
-        //TODO Just loop through until you get to the next node, then i guess sharedptr new node and link it?
+        //TODO Go to the address, and fuse with next chunk if its also free
         void free(void* addr){
+            //Get address to the header
+            MemNode* memNode = (MemNode*)addr - 1;
+            memNode->free = true;
 
+            MemNode* nextNode = getNextNode(memNode);
+
+            //If next node is free, we can combine them :D
+            if (nextNode->free){
+                memNode->m_size += memNodeSize + nextNode->m_size;
+                *nextNode = NULL;
+            }
+    
         }
 
 };
