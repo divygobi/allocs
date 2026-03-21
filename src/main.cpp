@@ -1,4 +1,3 @@
-#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -29,6 +28,7 @@ struct MemNode{
 
 class dynAlloc{
     private:
+        //Capacity may grow with if all chunks are taken
         int m_capacity;
         MemNode* m_startAddr;
 
@@ -37,7 +37,7 @@ class dynAlloc{
 
         dynAlloc(int m_capacity = 1024) : m_capacity(m_capacity){
 
-            //TODO We use 
+            //TODO We use 2*m_capacity 
             void* startAddr = mmap(NULL, 2*m_capacity, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1,  0);
 
             MemNode initialChunk(m_capacity, true);
@@ -52,7 +52,7 @@ class dynAlloc{
 
         //TODO call unmap on the 
         ~dynAlloc(){
-
+            munmap(m_startAddr, m_capacity);
         }
 
         void* alloc(size_t size){
@@ -104,7 +104,9 @@ class dynAlloc{
 
         }
 
+            
         //TODO Go to the address, and fuse with next chunk if its also free
+        //Generally need to add fragmentation policy
         void free(void* addr){
             //Get address to the header
             MemNode* memNode = (MemNode*)addr - 1;
