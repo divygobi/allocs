@@ -8,22 +8,38 @@
 #include <stdio.h>
 #include <iostream>
 
+#define HEADER 1
+#define FOOTER 0
+
+#define ALLOCED 1
+#define FREE 0
+
 int main(){
     std::cout << "Hello World!" << '\n'; 
-    
     return 0;
 }
 
+
+// [memSize][m_size][memSize]
+//
+
 //A header representing the start of a chunk of memory 
 //We return a pointer to this chunk of memory by doing memNode + 1, this gives us a pointer right outside the struct 
+//
+//The size is given by bytes 
 struct MemNode{
     //The size of the memory chunk
-    std::uint16_t m_size;
+    std::uint8_t m_size;
 
     //TODO could bit pack this maybe?
-    bool free;
+    
+    //Whether the block is free or not 
+    bool m_free;
 
-    MemNode(int m_size = 0, bool free = true){}
+    //Whether this block is a header 
+    bool m_isHeader;
+
+    MemNode(int m_size = 0, bool m_free = true, bool m_isHeader = true){}
 };
 
 class dynAlloc{
@@ -40,17 +56,15 @@ class dynAlloc{
             //TODO We use 2*m_capacity 
             void* startAddr = mmap(NULL, 2*m_capacity, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1,  0);
 
-            MemNode initialChunk(m_capacity, true);
-
-            
+            MemNode initialChunk(m_capacity, true, true);
             m_startAddr = (MemNode*)(startAddr);
 
-            // We have structure like [header] | [data]
+            // We have structure like [header] | [data] | footer 
             *m_startAddr = initialChunk; 
 
         }
 
-        //TODO call unmap on the 
+        //TODO call unmap on the allocated chunk
         ~dynAlloc(){
             munmap(m_startAddr, m_capacity);
         }
@@ -61,7 +75,7 @@ class dynAlloc{
             //Start at the beginning of the mmap
             MemNode* memNode = m_startAddr;
             //TODO Linear search including checks of the taken chunks is not the best, fix this l8r
-            while(memNode != nullptr){
+            while(memNode != nullptr && memNode ){
                 // We can fit the requested size in this chunk yey 
                 size_t availBytes = memNode->m_size;
                 if(availBytes >= size + memNodeSize){
@@ -104,18 +118,17 @@ class dynAlloc{
 
         }
 
-            
         //TODO Go to the address, and fuse with next chunk if its also free
         //Generally need to add fragmentation policy
         void free(void* addr){
             //Get address to the header
             MemNode* memNode = (MemNode*)addr - 1;
-            memNode->free = true;
+            memNode->m_free = true;
 
             MemNode* nextNode = getNextNode(memNode);
 
             //If next node is free, we can combine them :D
-            if (nextNode->free){
+            if (nextNode->m_free){
                 memNode->m_size += memNodeSize + nextNode->m_size;
                 *nextNode = NULL;
             }
