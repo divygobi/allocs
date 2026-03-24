@@ -59,26 +59,28 @@ class dynAlloc{
             MemNode initialChunk(m_capacity, true, true);
             m_startAddr = (MemNode*)(startAddr);
 
-            // We have structure like [header] | [data] | footer 
+            // We have structure like [header] | [data] | [footer], lets say we wanna alloc this 
+            // We have structure like [header] | [data] | [footer]
             *m_startAddr = initialChunk; 
 
-        }
 
+        }
         //TODO call unmap on the allocated chunk
         ~dynAlloc(){
             munmap(m_startAddr, m_capacity);
         }
 
+        
+        //Size is in # of bytes!
         void* alloc(size_t size){
             void* chunk = nullptr;
-
             //Start at the beginning of the mmap
             MemNode* memNode = m_startAddr;
             //TODO Linear search including checks of the taken chunks is not the best, fix this l8r
             while(memNode != nullptr && memNode ){
                 // We can fit the requested size in this chunk yey 
                 size_t availBytes = memNode->m_size;
-                if(availBytes >= size + memNodeSize){
+                if(availBytes >= size + memNodeSize + memNodeSize){
 
                     MemNode newChunkMeta = {(uint16_t)size, false};
                     *memNode = newChunkMeta;
